@@ -4,6 +4,7 @@ let admin_controllers = require('../controllers/admin_controllers')();
 let verify_token = require('../config/helper').verify_token;
 
 router.get('/subscriber-list', admin_controllers.GetSubscriber);
+router.get('/subscriber-graph', admin_controllers.SubscriberGraph);
 router.post('/login', admin_controllers.LoginAdmin);
 
 module.exports = router;

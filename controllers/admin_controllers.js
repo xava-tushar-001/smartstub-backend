@@ -68,6 +68,46 @@ module.exports = function () {
         }
     };
 
+    module.SubscriberGraph = async (req, res) => {
+        try {
+            const days = parseInt(req.query.days) || 7;
+
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - (days - 1));
+            startDate.setHours(0, 0, 0, 0);
+
+            const result = await Subscriber.aggregate([
+                {
+                    $match: {
+                        is_deleted: 0,
+                        createdAt: { $gte: startDate }
+                    }
+                },
+                {
+                    $group: {
+                        _id: {
+                            $dateToString: {
+                                format: "%Y-%m-%d",
+                                date: "$createdAt"
+                            }
+                        },
+                        count: { $sum: 1 }
+                    }
+                },
+                {
+                    $sort: {
+                        _id: 1
+                    }
+                }
+            ]);
+
+            return helper.success(res, "Subscriber graph", result);
+
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
     module.LoginAdmin = async (req, res) => {
         try {
             let required = {
