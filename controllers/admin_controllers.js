@@ -1,22 +1,22 @@
 const helper = require('../config/helper')
 const bcrypt = require('bcrypt');
 const Users = require('../models/users')
-
+const Subscriber = require('../models/subscriber')
+var jwt = require('jsonwebtoken');
 
 // Admin Controllers 
 module.exports = function () {
     let module = {}
 
     // Get All Users
-    module.get_all_users = async (req, res) => {
+    module.GetSubscriber = async (req, res) => {
         try {
             const required = {
                 page: req.query.page,
             };
 
             const non_required = {
-                name: req.query.name,
-                email: req.query.email,
+                search: req.query.search,
             };
 
             await helper.validObject(required, non_required);
@@ -26,19 +26,14 @@ module.exports = function () {
             let skip = (page - 1) * limit;
 
             let query = {
-                user_type: 0,
-                // is_active: 1 
+                is_deleted: 0
             };
 
-            if (non_required.name) {
-                query.name = { $regex: non_required.name, $options: 'i' };
+            if (non_required.search) {
+                query.email = { $regex: non_required.search, $options: 'i' };
             }
 
-            if (non_required.email) {
-                query.email = { $regex: non_required.email, $options: 'i' };
-            }
-
-            const result = await Users.aggregate([
+            const result = await Subscriber.aggregate([
                 { $match: query },
                 {
                     $facet: {
@@ -46,7 +41,6 @@ module.exports = function () {
                             { $sort: { created_at: -1 } },
                             { $skip: skip },
                             { $limit: limit },
-                            { $project: { name: 1, email: 1, created_at: 1, is_active: 1, } }
                         ],
                         totalCount: [
                             { $count: "count" }
@@ -59,10 +53,13 @@ module.exports = function () {
             const totalCount = result[0].totalCount[0]?.count || 0;
 
             const response = {
-                users,
-                totalCount,
-                currentPage: page,
-                totalPages: Math.ceil(totalCount / limit)
+                subscriber: users,
+                pagenation: {
+                    page: page,
+                    limit: limit,
+                    total: totalCount,
+                    totalPages: Math.ceil(totalCount / limit)
+                }
             };
 
             return helper.success(res, "All Users", response);
@@ -71,6 +68,50 @@ module.exports = function () {
         }
     };
 
+    module.LoginAdmin = async (req, res) => {
+        try {
+            let required = {
+                email: req.body.email,
+                password: req.body.password
+            };
+
+            await helper.validObject(required, {});
+
+            let user = await Users.findOne({
+                email: required.email,
+                is_active: 1,
+                is_deleted: 0
+
+            });
+
+            if (!user) {
+                return helper.error(res, "User not found");
+            }
+
+            const isPasswordValid = await bcrypt.compare(required.password, user.password);
+
+            if (!isPasswordValid) {
+                return helper.error(res, "Invalid password");
+            }
+
+            const payload = {
+                id: user.id,
+                email: user.email,
+            };
+
+            const token = jwt.sign(payload, process.env.JWT_KEY, { expiresIn: process.env.JWT_EXPIRY });
+
+            let response = {
+                token: token,
+                user_type: user.user_type
+            }
+
+            return helper.success(res, "User fetched successfully", response);
+
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    }
 
     return module;
 }

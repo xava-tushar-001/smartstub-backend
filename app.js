@@ -31,7 +31,7 @@ app.use(fileUpload());
 app.use('/', indexRouter);
 app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/gl', global_router);
-app.use('/api/v1/ad', admin_router);
+app.use('/api/v1/admin', admin_router);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
