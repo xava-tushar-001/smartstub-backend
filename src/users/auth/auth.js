@@ -40,7 +40,7 @@ module.exports = function () {
                 raw: true,
             });
             if (activeUser) {
-                return helper.error(res, "Email is already registered");
+                return helper.error(res, "Email is Already Registered");
             }
 
             const hashedPassword = await bcrypt.hash(required.password.toString(), saltRounds);
