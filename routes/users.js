@@ -12,6 +12,7 @@ router.post('/subscriber', Subscriber.CreateSubscriber);
 router.post('/register', Auth.Register);
 router.post('/verify-otp', Auth.VerifyOtp);
 router.post('/resend-otp', Auth.ResendOtp);
+router.post('/google-login', Auth.GoogleLogin);
 
 // Profile (protected)
 router.get('/profile', verify_token, Profile.GetProfile);

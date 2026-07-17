@@ -4,9 +4,11 @@ const Users = db.users;
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const randomstring = require("randomstring");
+const { OAuth2Client } = require('google-auth-library');
 
 const saltRounds = 10;
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 function generateOtp() {
     // 4-digit numeric OTP (1000-9999) so it never has a leading zero,
@@ -165,6 +167,64 @@ module.exports = function () {
 
             return helper.success(res, "A new OTP has been sent to your email", {
                 email: required.email,
+            });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
+     * Sign in / sign up with Google.
+     * Body: { credential } (the ID token from Google Identity Services)
+     * Verifies the token, then finds-or-creates the user. Google has already
+     * verified the email, so the account is activated immediately.
+     */
+    module.GoogleLogin = async (req, res) => {
+        try {
+            const required = { credential: req.body.credential };
+            await helper.validObject(required, {});
+
+            const ticket = await googleClient.verifyIdToken({
+                idToken: required.credential,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            const payload = ticket.getPayload();
+
+            if (!payload || !payload.email_verified) {
+                return helper.error(res, "Google account email is not verified");
+            }
+
+            let user = await Users.findOne({
+                where: { email: payload.email, is_deleted: 0 },
+            });
+
+            if (user) {
+                if (!user.is_active) {
+                    await user.update({
+                        is_active: 1,
+                        name: user.name || payload.name,
+                        otp: null,
+                        otp_exp_time: null,
+                    });
+                }
+            } else {
+                user = await Users.create({
+                    name: payload.name,
+                    email: payload.email,
+                    user_type: 0,
+                    is_active: 1,
+                    is_deleted: 0,
+                });
+            }
+
+            const jwtPayload = { id: user.id, email: user.email };
+            const token = jwt.sign(jwtPayload, process.env.JWT_KEY, {
+                expiresIn: process.env.JWT_EXPIRY,
+            });
+
+            return helper.success(res, "Logged in with Google successfully", {
+                token,
+                user_type: user.user_type,
             });
         } catch (error) {
             return helper.error(res, error);
