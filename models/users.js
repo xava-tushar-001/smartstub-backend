@@ -1,55 +1,68 @@
-const mongoose = require('mongoose');
-
-const userSchema = new mongoose.Schema({
+const Sequelize = require('sequelize');
+module.exports = function (sequelize, DataTypes) {
+  return sequelize.define('users', {
+    id: {
+      autoIncrement: true,
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      primaryKey: true
+    },
     name: {
-        type: String,
-        maxlength: 120,
+      type: DataTypes.STRING(120),
+      allowNull: true
     },
     email: {
-        type: String,
-        maxlength: 120,
+      type: DataTypes.STRING(120),
+      allowNull: true
     },
     password: {
-        type: String,
-        maxlength: 90,
+      type: DataTypes.STRING(90),
+      allowNull: true
     },
     about: {
-        type: String,
-        maxlength: 180,
+      type: DataTypes.STRING(180),
+      allowNull: true
     },
     otp_exp_time: {
-        type: String,
-        maxlength: 16,
+      type: DataTypes.STRING(16),
+      allowNull: true
     },
     otp: {
-        type: Number,
+      type: DataTypes.INTEGER,
+      allowNull: true
     },
     user_type: {
-        type: Number,
-        default: 0,
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
     },
     image: {
-        type: String,
-        maxlength: 60,
-    },
-    reset_token: {
-        type: String,
-        maxlength: 120,
+      type: DataTypes.STRING(60),
+      allowNull: true
     },
     is_active: {
-        type: Number,
-        default: 0,
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
     },
     is_deleted: {
-        type: Number,
-        default: 0,
-    },
-},
-    {
-        timestamps: true,
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
     }
-);
-
-const Users = mongoose.model('users', userSchema);
-
-module.exports = Users;
+  }, {
+    sequelize,
+    tableName: 'users',
+    timestamps: true,
+    indexes: [
+      {
+        name: "PRIMARY",
+        unique: true,
+        using: "BTREE",
+        fields: [
+          { name: "id" },
+        ]
+      },
+    ]
+  });
+};

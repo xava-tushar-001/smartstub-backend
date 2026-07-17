@@ -1,10 +1,14 @@
 var express = require('express');
 var router = express.Router();
-let admin_controllers = require('../controllers/admin_controllers')();
-let verify_token = require('../config/helper').verify_token;
+let AdminAuth = require('../src/admin/auth/auth')();
+let Subscriber = require('../src/admin/subscriber/subscriber')();
+let verify_token = require('../helper/helper').verify_token;
 
-router.get('/subscriber-list', admin_controllers.GetSubscriber);
-router.get('/subscriber-graph', admin_controllers.SubscriberGraph);
-router.post('/login', admin_controllers.LoginAdmin);
+router.post('/login-admin', AdminAuth.LoginAdmin);
+
+
+// Subscriber
+router.get('/subscriber-list', Subscriber.GetSubscriber);
+router.get('/subscriber-graph', Subscriber.SubscriberGraph);
 
 module.exports = router;

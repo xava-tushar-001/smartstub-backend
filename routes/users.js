@@ -1,8 +1,9 @@
 var express = require('express');
 var router = express.Router();
-let user_controllers = require('../controllers/user_controllers')();
-let verify_token = require('../config/helper').verify_token;
+let Subscriber = require('../src/users/subscriber/subscriber')();
+let verify_token = require('../helper/helper').verify_token;
 
-router.post('/create', user_controllers.create_user);
+router.post('/subscriber', Subscriber.CreateSubscriber);
+
 
 module.exports = router;

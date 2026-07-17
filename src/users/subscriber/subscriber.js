@@ -1,15 +1,17 @@
-const helper = require('../config/helper')
-const Users = require('../models/users')
-const Subscriber = require('../models/subscriber')
+const helper = require('../../../helper/helper')
+const db = require("../../../models");
+const Users = db.users
+const Subscriber = db.subscriber
 const bcrypt = require('bcrypt');
 var jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const { Op } = db.Sequelize;
+const sequelize = db.sequelize;
 
 module.exports = function () {
 
     let module = {}
 
-    module.create_user = async (req, res) => {
+    module.CreateSubscriber = async (req, res) => {
         try {
 
             const required = {
@@ -19,12 +21,13 @@ module.exports = function () {
             const non_required = {
             };
 
-            await helper.validObject(required, non_required, 'signup');
+            await helper.validObject(required, non_required);
 
             let find_user = await Subscriber.findOne({
-                email: required.email,
+                where: {
+                    email: required.email,
+                },
             });
-
 
             if (find_user) {
                 return helper.success(res, "User already exists", {})

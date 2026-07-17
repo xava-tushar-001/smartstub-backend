@@ -1,0 +1,13 @@
+{
+  "otp_email": {
+    "subject": "Verify Your Account",
+    "hello": "Hello there",
+    "complete": "To complete your verification process, please use the following One-Time Password (OTP):",
+    "otp_code": "[otp_code]",
+    "security": "For security reasons, please do not share this code with anyone"
+  },
+  "forgot_password_email": {
+    "name": "[name]",
+    "link": "[link]"
+  }
+}

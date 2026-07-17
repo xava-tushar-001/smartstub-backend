@@ -1,33 +1,34 @@
-const mongoose = require("mongoose");
-const Users = require("./models/users");
+const mysql = require('mysql2/promise');
+const db = require('./models');
 const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
-// mongoose.set('debug', true);
+const migration_seeders = (async () => {
+  try {
+    await db.sequelize.sync({ alter: false });
+    // await db.sequelize.sync({ alter: true });
+    console.log('Database synced successfully');
 
-mongoose.connect(`${process.env.DATABASE}`, {
-}).then(async () => {
+    const existingUser = await db.users.findOne({ where: { email: process.env.ADMIN_EMAIL } });
 
-    const existingAdmin = await Users.findOne({ email: process.env.ADMIN_EMAIL });
+    if (!existingUser) {
+      const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASS.toString(), saltRounds);
 
-    if (!existingAdmin) {
+      await db.users.create({
+        name: process.env.ADMIN_NAME,
+        email: process.env.ADMIN_EMAIL,
+        password: hashedPassword,
+        user_type: 1,
+        is_active: 1
+      });
 
-        let hash_password = await bcrypt.hash(process.env.ADMIN_PASS, 10);
-
-        await Users.create({
-            name: process.env.ADMIN_NAME,
-            email: process.env.ADMIN_EMAIL,
-            password: hash_password,
-            is_active: "1",
-            user_type: "1",
-        });
-
-        console.log("Default admin user created.");
+      console.log('Admin user created successfully');
     } else {
-        console.log("Admin user already exists.");
+      console.log('Admin user already exists');
     }
+  } catch (err) {
+    console.error('Error during migration and seeding:', err);
+  }
+})();
 
-
-    console.log("Connected to MongoDB");
-}).catch((err) => {
-    console.error("Error connecting to MongoDB:", err);
-});
+module.exports = migration_seeders;

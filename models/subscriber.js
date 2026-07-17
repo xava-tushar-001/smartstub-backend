@@ -1,20 +1,34 @@
-const mongoose = require('mongoose');
-
-const subscriberSchema = new mongoose.Schema({
+const Sequelize = require('sequelize');
+module.exports = function(sequelize, DataTypes) {
+  return sequelize.define('subscriber', {
+    id: {
+      autoIncrement: true,
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      primaryKey: true
+    },
     email: {
-        type: String,
-        maxlength: 120,
+      type: DataTypes.STRING(180),
+      allowNull: true
     },
     is_deleted: {
-        type: Number,
-        default: 0,
-    },
-},
-    {
-        timestamps: true,
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
     }
-);
-
-const Subscriber = mongoose.model('subscriber', subscriberSchema);
-
-module.exports = Subscriber;
+  }, {
+    sequelize,
+    tableName: 'subscriber',
+    timestamps: true,
+    indexes: [
+      {
+        name: "PRIMARY",
+        unique: true,
+        using: "BTREE",
+        fields: [
+          { name: "id" },
+        ]
+      },
+    ]
+  });
+};
