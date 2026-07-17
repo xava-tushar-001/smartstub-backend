@@ -19,10 +19,11 @@ module.exports = function () {
             await helper.validObject(required, {});
 
             let user = await Users.findOne({
-                email: required.email,
-                is_active: 1,
-                is_deleted: 0
-
+                where: {
+                    email: required.email,
+                    is_active: 1,
+                    is_deleted: 0
+                }
             });
 
             if (!user) {

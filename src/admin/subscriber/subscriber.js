@@ -11,17 +11,14 @@ module.exports = function () {
 
     module.GetSubscriber = async (req, res) => {
         try {
-            const required = {
-                page: req.query.page,
-            };
-
             const non_required = {
+                page: req.query.page,
                 search: req.query.search,
             };
 
-            await helper.validObject(required, non_required);
+            await helper.validObject({}, non_required);
 
-            const page = parseInt(required.page) || 1;
+            const page = parseInt(non_required.page) || 1;
             const limit = 10;
             const offset = (page - 1) * limit;
 
