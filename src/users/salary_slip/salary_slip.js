@@ -1,7 +1,7 @@
 const helper = require('../../../helper/helper');
 const db = require("../../../models");
 const SalarySlip = db.salary_slip;
-const { analyzeSalarySlip } = require('../../../helper/claude');
+const { analyzeSalarySlip } = require('../../../helper/gemini');
 const { getPlanLimit, getMonthlyUploadCount } = require('../../../helper/plan');
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
