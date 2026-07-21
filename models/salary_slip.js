@@ -42,9 +42,21 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: true
     },
     // [{ name, status: 'pass' | 'warning' | 'error', message }]
+    // MariaDB stores JSON as LONGTEXT (no native JSON type), so on write
+    // Sequelize's own JSON serialization already handles it correctly, but
+    // on read the driver hands back the raw unparsed string - parse it here.
     checks: {
       type: DataTypes.JSON,
-      allowNull: true
+      allowNull: true,
+      get() {
+        const raw = this.getDataValue('checks');
+        if (typeof raw !== 'string') return raw;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      },
     },
     pass_count: {
       type: DataTypes.INTEGER,
