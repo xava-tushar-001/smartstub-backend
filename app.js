@@ -12,6 +12,7 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var global_router = require('./routes/global');
 var admin_router = require('./routes/admin');
+var stripeWebhook = require('./src/webhooks/stripe_webhook');
 
 var app = express();
 
@@ -19,6 +20,9 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 app.use(logger('dev'));
+// Stripe needs the raw, unparsed body to verify the webhook signature -
+// this must be registered before express.json() below.
+app.post('/api/v1/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());

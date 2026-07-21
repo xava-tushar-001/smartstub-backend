@@ -141,6 +141,62 @@ module.exports = {
     },
 
 
+    /**
+     * Same as verify_token, but additionally requires the caller's
+     * user_type to be an admin (1). Use this for /admin/* routes so a
+     * regular user's token can't read other users' billing/payment data.
+     */
+    verify_admin: async (req, res, next) => {
+        try {
+            const authHeader = req.headers['authorization'];
+            if (!authHeader) {
+                return res.status(401).json({
+                    status: false,
+                    message: "authorization",
+                });
+            }
+            const token = authHeader.split(' ')[1];
+            if (!token) {
+                return res.status(401).json({
+                    status: false,
+                    message: "authorization",
+                });
+            }
+            jwt.verify(token, process.env.JWT_KEY, async (err, decoded) => {
+                if (err) {
+                    return res.status(401).json({
+                        status: false,
+                        message: "authorization",
+                    });
+                }
+                const user = await Users.findOne({
+                    where: {
+                        id: decoded.id,
+                        email: decoded.email,
+                    },
+                    raw: true,
+                })
+
+                if (!user || user.user_type !== 1) {
+                    return res.status(401).json({
+                        status: false,
+                        message: "authorization",
+                    });
+                }
+                req.user = user;
+                next();
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({
+                status: false,
+                message: "An error occurred during token verification",
+                error: error.message,
+            });
+        }
+    },
+
+
     file_upload: (files) => {
         const names = [];
         const attachments = Array.isArray(files) ? files : [files];

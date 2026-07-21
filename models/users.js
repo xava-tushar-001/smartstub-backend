@@ -49,6 +49,29 @@ module.exports = function (sequelize, DataTypes) {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0
+    },
+    // free | paid
+    plan: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      defaultValue: 'free'
+    },
+    stripe_customer_id: {
+      type: DataTypes.STRING(60),
+      allowNull: true
+    },
+    stripe_subscription_id: {
+      type: DataTypes.STRING(60),
+      allowNull: true
+    },
+    // Stripe subscription status: active | trialing | past_due | canceled | incomplete | unpaid, etc.
+    subscription_status: {
+      type: DataTypes.STRING(30),
+      allowNull: true
+    },
+    current_period_end: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize,

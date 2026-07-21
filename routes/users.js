@@ -4,6 +4,7 @@ let Subscriber = require('../src/users/subscriber/subscriber')();
 let Auth = require('../src/users/auth/auth')();
 let Profile = require('../src/users/profile/profile')();
 let SalarySlip = require('../src/users/salary_slip/salary_slip')();
+let Billing = require('../src/users/billing/billing')();
 let verify_token = require('../helper/helper').verify_token;
 
 // Waitlist / newsletter
@@ -24,5 +25,11 @@ router.post('/salary-slips', verify_token, SalarySlip.Upload);
 router.get('/salary-slips', verify_token, SalarySlip.List);
 router.get('/salary-slips/:id', verify_token, SalarySlip.GetOne);
 router.get('/salary-slips/:id/file', verify_token, SalarySlip.GetFile);
+router.post('/salary-slips/:id/retry', verify_token, SalarySlip.Retry);
+
+// Billing (protected)
+router.get('/billing/status', verify_token, Billing.GetStatus);
+router.post('/billing/checkout', verify_token, Billing.CreateCheckoutSession);
+router.post('/billing/portal', verify_token, Billing.CreatePortalSession);
 
 module.exports = router;

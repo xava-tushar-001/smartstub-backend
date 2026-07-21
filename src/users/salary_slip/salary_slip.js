@@ -2,6 +2,7 @@ const helper = require('../../../helper/helper');
 const db = require("../../../models");
 const SalarySlip = db.salary_slip;
 const { analyzeSalarySlip } = require('../../../helper/claude');
+const { getPlanLimit, getMonthlyUploadCount } = require('../../../helper/plan');
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -31,6 +32,20 @@ module.exports = function () {
             }
             if (file.size > MAX_FILE_SIZE) {
                 return helper.error(res, "File is too large. Maximum size is 10MB");
+            }
+
+            const plan = req.user.plan || 'free';
+            const limit = getPlanLimit(plan);
+            const usedThisMonth = await getMonthlyUploadCount(req.user.id);
+
+            if (usedThisMonth >= limit) {
+                return helper.error(
+                    res,
+                    plan === 'free'
+                        ? `You've used all ${limit} free payslip uploads this month. Upgrade to Pro for up to 12/month.`
+                        : `You've reached your Pro plan limit of ${limit} payslip uploads this month.`,
+                    { limit_reached: true, plan, limit, used: usedThisMonth }
+                );
             }
 
             const slip = await SalarySlip.create({
@@ -120,6 +135,57 @@ module.exports = function () {
             }
 
             return helper.success(res, "Salary slip", { salary_slip: slip });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
+     * Re-runs analysis for a previously failed salary slip, reusing the
+     * already-stored file (owner only). No re-upload needed.
+     */
+    module.Retry = async (req, res) => {
+        try {
+            const slip = await SalarySlip.findOne({
+                where: { id: req.params.id, user_id: req.user.id },
+            });
+
+            if (!slip) {
+                return helper.error(res, "Salary slip not found");
+            }
+
+            if (slip.status !== 'failed') {
+                return helper.error(res, "Only a failed analysis can be retried");
+            }
+
+            await slip.update({ status: 'processing', error_message: null });
+
+            try {
+                const { summary, checks } = await analyzeSalarySlip(slip.file_data, slip.mime_type);
+
+                const pass_count = checks.filter((c) => c.status === 'pass').length;
+                const warning_count = checks.filter((c) => c.status === 'warning').length;
+                const error_count = checks.filter((c) => c.status === 'error').length;
+                const overall_status = error_count > 0 ? 'red' : warning_count > 0 ? 'orange' : 'green';
+
+                await slip.update({
+                    status: 'completed',
+                    summary,
+                    checks,
+                    pass_count,
+                    warning_count,
+                    error_count,
+                    overall_status,
+                });
+            } catch (analysisError) {
+                console.error('Salary slip retry analysis failed:', analysisError);
+                await slip.update({
+                    status: 'failed',
+                    error_message: analysisError.message || 'Analysis failed',
+                });
+            }
+
+            return helper.success(res, "Analysis retried", { salary_slip: serializeSlip(slip) });
         } catch (error) {
             return helper.error(res, error);
         }
