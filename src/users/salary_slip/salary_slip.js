@@ -1,5 +1,6 @@
 const helper = require('../../../helper/helper');
 const db = require("../../../models");
+const { Op } = require('sequelize');
 const SalarySlip = db.salary_slip;
 const { analyzeSalarySlip } = require('../../../helper/gemini');
 const { getPlanLimit, getMonthlyUploadCount } = require('../../../helper/plan');
@@ -114,6 +115,66 @@ module.exports = function () {
                     total: count,
                     totalPages: Math.ceil(count / limit) || 1,
                 },
+            });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
+     * Aggregate stats for the home dashboard: totals across all checks,
+     * and a monthly upload count for the last 6 months (owner only).
+     */
+    module.GetStats = async (req, res) => {
+        try {
+            const userId = req.user.id;
+
+            const totalsRow = await SalarySlip.findOne({
+                where: { user_id: userId },
+                attributes: [
+                    [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'total'],
+                    [db.sequelize.fn('SUM', db.sequelize.col('pass_count')), 'pass_total'],
+                    [db.sequelize.fn('SUM', db.sequelize.col('warning_count')), 'warning_total'],
+                    [db.sequelize.fn('SUM', db.sequelize.col('error_count')), 'error_total'],
+                ],
+                raw: true,
+            });
+
+            const rangeStart = new Date();
+            rangeStart.setMonth(rangeStart.getMonth() - 5);
+            rangeStart.setDate(1);
+            rangeStart.setHours(0, 0, 0, 0);
+
+            const monthlyRows = await SalarySlip.findAll({
+                where: { user_id: userId, createdAt: { [Op.gte]: rangeStart } },
+                attributes: [
+                    [db.sequelize.fn('DATE_FORMAT', db.sequelize.col('createdAt'), '%Y-%m'), 'month'],
+                    [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count'],
+                ],
+                group: [db.sequelize.fn('DATE_FORMAT', db.sequelize.col('createdAt'), '%Y-%m')],
+                raw: true,
+            });
+            const monthlyByKey = new Map(monthlyRows.map((r) => [r.month, Number(r.count)]));
+
+            const monthly_uploads = [];
+            const cursor = new Date(rangeStart);
+            for (let i = 0; i < 6; i++) {
+                const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+                monthly_uploads.push({
+                    month: cursor.toLocaleString('en-US', { month: 'short' }),
+                    count: monthlyByKey.get(key) || 0,
+                });
+                cursor.setMonth(cursor.getMonth() + 1);
+            }
+
+            return helper.success(res, "Salary slip stats", {
+                totals: {
+                    total: Number(totalsRow.total) || 0,
+                    pass: Number(totalsRow.pass_total) || 0,
+                    warning: Number(totalsRow.warning_total) || 0,
+                    error: Number(totalsRow.error_total) || 0,
+                },
+                monthly_uploads,
             });
         } catch (error) {
             return helper.error(res, error);
