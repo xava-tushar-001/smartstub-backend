@@ -4,9 +4,11 @@ const { Op } = require('sequelize');
 const SalarySlip = db.salary_slip;
 const { analyzeSalarySlip } = require('../../../helper/gemini');
 const { getPlanLimit, getMonthlyUploadCount } = require('../../../helper/plan');
+const { getPdfPageCount } = require('../../../helper/pdf');
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_PDF_PAGES = 4;
 
 function serializeSlip(slip) {
     const json = slip.toJSON();
@@ -33,6 +35,21 @@ module.exports = function () {
             }
             if (file.size > MAX_FILE_SIZE) {
                 return helper.error(res, "File is too large. Maximum size is 10MB");
+            }
+
+            if (file.mimetype === 'application/pdf') {
+                let pageCount;
+                try {
+                    pageCount = await getPdfPageCount(file.data);
+                } catch (pdfError) {
+                    return helper.error(res, "Could not read this PDF. Please make sure it's a valid, unencrypted PDF file");
+                }
+                if (pageCount > MAX_PDF_PAGES) {
+                    return helper.error(
+                        res,
+                        `This PDF has ${pageCount} pages. Please upload a salary slip with at most ${MAX_PDF_PAGES} pages`
+                    );
+                }
             }
 
             const plan = req.user.plan || 'free';
