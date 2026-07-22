@@ -5,6 +5,7 @@ let Auth = require('../src/users/auth/auth')();
 let Profile = require('../src/users/profile/profile')();
 let SalarySlip = require('../src/users/salary_slip/salary_slip')();
 let Billing = require('../src/users/billing/billing')();
+let Payroll = require('../src/users/payroll/payroll')();
 let verify_token = require('../helper/helper').verify_token;
 
 // Waitlist / newsletter
@@ -32,5 +33,10 @@ router.post('/salary-slips/:id/retry', verify_token, SalarySlip.Retry);
 router.get('/billing/status', verify_token, Billing.GetStatus);
 router.post('/billing/checkout', verify_token, Billing.CreateCheckoutSession);
 router.post('/billing/portal', verify_token, Billing.CreatePortalSession);
+
+// Payroll integration (protected, Pro-only - enforced inside the controller)
+router.post('/payroll/connect', verify_token, Payroll.Connect);
+router.get('/payroll/status', verify_token, Payroll.GetStatus);
+router.post('/payroll/disconnect', verify_token, Payroll.Disconnect);
 
 module.exports = router;
