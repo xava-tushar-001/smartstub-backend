@@ -1,10 +1,11 @@
 const helper = require('../../../helper/helper');
 const db = require("../../../models");
 const PayrollConnection = db.payroll_connection;
-const { exchangeCodeForToken, introspect, disconnect: finchDisconnect } = require('../../../helper/finch');
+const { createConnectSession, exchangeCodeForToken, disconnect: finchDisconnect } = require('../../../helper/finch');
 const { encrypt, decrypt } = require('../../../helper/crypto');
 
 const PAID_SUBSCRIPTION_REQUIRED_MESSAGE = 'A paid subscription is required to connect your payroll account.';
+const FINCH_PRODUCTS = ['company', 'directory', 'individual', 'employment', 'payment'];
 
 function serializeConnection(connection) {
     if (!connection) return null;
@@ -18,6 +19,29 @@ function serializeConnection(connection) {
 
 module.exports = function () {
     let module = {};
+
+    /**
+     * Creates a Finch Connect session for the frontend SDK to open.
+     * Pro-only - enforced here, not just hidden in the UI.
+     */
+    module.CreateSession = async (req, res) => {
+        try {
+            if (req.user.plan !== 'paid') {
+                return helper.error(res, PAID_SUBSCRIPTION_REQUIRED_MESSAGE, { subscription_required: true });
+            }
+
+            const session = await createConnectSession({
+                customerId: req.user.id,
+                customerName: req.user.name || req.user.email,
+                products: FINCH_PRODUCTS,
+                sandbox: process.env.FINCH_SANDBOX !== '0',
+            });
+
+            return helper.success(res, 'Connect session created', { session_id: session.session_id });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
 
     /**
      * Finishes a Finch Connect session: exchanges the authorization code for
@@ -40,33 +64,20 @@ module.exports = function () {
                 return helper.error(res, 'Finch did not return an access token');
             }
 
-            let providerId = null;
-            try {
-                const info = await introspect(accessToken);
-                providerId = info?.provider_id || null;
-            } catch (introspectError) {
-                console.error('Finch introspect failed:', introspectError);
-            }
-
             const encryptedToken = encrypt(accessToken);
-
-            const [connection] = await PayrollConnection.findOrCreate({
-                where: { user_id: req.user.id },
-                defaults: {
-                    user_id: req.user.id,
-                    provider: providerId,
-                    finch_token: encryptedToken,
-                    status: 'active',
-                    last_sync_at: new Date(),
-                },
-            });
-
-            await connection.update({
-                provider: providerId,
+            const connectionFields = {
+                provider: tokenResponse.provider_id || null,
+                finch_account_id: tokenResponse.connection_id || null,
                 finch_token: encryptedToken,
                 status: 'active',
                 last_sync_at: new Date(),
+            };
+
+            const [connection] = await PayrollConnection.findOrCreate({
+                where: { user_id: req.user.id },
+                defaults: { user_id: req.user.id, ...connectionFields },
             });
+            await connection.update(connectionFields);
 
             return helper.success(res, 'Payroll account connected', { connection: serializeConnection(connection) });
         } catch (error) {
