@@ -39,5 +39,7 @@ router.post('/payroll/session', verify_token, Payroll.CreateSession);
 router.post('/payroll/connect', verify_token, Payroll.Connect);
 router.get('/payroll/status', verify_token, Payroll.GetStatus);
 router.post('/payroll/disconnect', verify_token, Payroll.Disconnect);
+router.post('/payroll/sync', verify_token, Payroll.Sync);
+router.get('/payroll/history', verify_token, Payroll.GetHistory);
 
 module.exports = router;

@@ -3,9 +3,10 @@ const db = require("../../../models");
 const PayrollConnection = db.payroll_connection;
 const { createConnectSession, exchangeCodeForToken, disconnect: finchDisconnect } = require('../../../helper/finch');
 const { encrypt, decrypt } = require('../../../helper/crypto');
+const payrollSync = require('./payrollSync')();
 
 const PAID_SUBSCRIPTION_REQUIRED_MESSAGE = 'A paid subscription is required to connect your payroll account.';
-const FINCH_PRODUCTS = ['company', 'directory', 'individual', 'employment', 'payment'];
+const FINCH_PRODUCTS = ['company', 'directory', 'individual', 'employment', 'payment', 'pay_statement'];
 
 function serializeConnection(connection) {
     if (!connection) return null;
@@ -120,6 +121,68 @@ module.exports = function () {
             await connection.update({ status: 'disconnected' });
 
             return helper.success(res, 'Payroll account disconnected', { connection: serializeConnection(connection) });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
+     * Runs PayrollSync for the caller: fetches employee/employment/pay-
+     * statement data from Finch, validates it, stores new PayrollHistory
+     * rows (skipping duplicates), and runs SalaryComparison on each new
+     * record. Pro-only - enforced here, not just hidden in the UI.
+     */
+    module.Sync = async (req, res) => {
+        try {
+            if (req.user.plan !== 'paid') {
+                return helper.error(res, PAID_SUBSCRIPTION_REQUIRED_MESSAGE, { subscription_required: true });
+            }
+
+            const result = await payrollSync.syncPayrollForUser(req.user.id);
+            return helper.success(res, 'Payroll data synced', result);
+        } catch (error) {
+            if (error.code === 'REAUTH_REQUIRED') {
+                return helper.error(res, error.message, { reauth_required: true });
+            }
+            if (error.code === 'NO_CONNECTION') {
+                return helper.error(res, error.message, { no_connection: true });
+            }
+            return helper.error(res, error.message || 'Could not sync payroll data.');
+        }
+    };
+
+    /**
+     * Paginated payroll history for the caller (owner only), with each
+     * record's stored SalaryComparison attached where one exists.
+     */
+    module.GetHistory = async (req, res) => {
+        try {
+            const page = parseInt(req.query.page, 10) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+
+            const { rows, count } = await db.payroll_history.findAndCountAll({
+                where: { user_id: req.user.id },
+                order: [['pay_date', 'DESC'], ['id', 'DESC']],
+                limit,
+                offset,
+            });
+
+            const ids = rows.map((r) => r.id);
+            const comparisons = ids.length
+                ? await db.payroll_comparison.findAll({ where: { current_payroll_id: ids } })
+                : [];
+            const comparisonByPayrollId = new Map(comparisons.map((c) => [c.current_payroll_id, c]));
+
+            const records = rows.map((r) => ({
+                ...r.toJSON(),
+                comparison: comparisonByPayrollId.get(r.id) || null,
+            }));
+
+            return helper.success(res, 'Payroll history', {
+                records,
+                pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) || 1 },
+            });
         } catch (error) {
             return helper.error(res, error);
         }

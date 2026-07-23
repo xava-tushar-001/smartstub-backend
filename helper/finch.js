@@ -1,6 +1,20 @@
 const FINCH_API_BASE = 'https://api.tryfinch.com';
 const FINCH_API_VERSION = '2020-09-17';
 
+/**
+ * Thrown when Finch responds with its "reauthenticate_user" signal -
+ * the connection's access token is no longer valid and the user must
+ * go through Finch Connect again. Callers should catch this specifically
+ * to mark the stored connection as disconnected.
+ */
+class FinchReauthRequiredError extends Error {
+    constructor(message) {
+        super(message || 'This payroll connection needs to be reconnected.');
+        this.name = 'FinchReauthRequiredError';
+        this.reauthRequired = true;
+    }
+}
+
 function getCredentials() {
     const clientId = process.env.FINCH_CLIENT_ID;
     const clientSecret = process.env.FINCH_CLIENT_SECRET;
@@ -12,6 +26,33 @@ function getCredentials() {
 
 function basicAuthHeader(clientId, clientSecret) {
     return `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
+}
+
+/**
+ * Shared request wrapper for Bearer-authenticated Finch calls. Detects the
+ * "reauthenticate_user" signal and throws FinchReauthRequiredError so
+ * callers can handle it uniformly (mark connection disconnected, etc).
+ */
+async function finchRequest(path, { method = 'GET', accessToken, body } = {}) {
+    const res = await fetch(`${FINCH_API_BASE}${path}`, {
+        method,
+        headers: {
+            'Finch-API-Version': FINCH_API_VERSION,
+            Authorization: `Bearer ${accessToken}`,
+            ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 401 && data?.finch_code === 'reauthenticate_user') {
+        throw new FinchReauthRequiredError(data.message);
+    }
+    if (!res.ok) {
+        throw new Error(data?.message || `Finch request to ${path} failed (${res.status})`);
+    }
+    return data;
 }
 
 /**
@@ -78,18 +119,95 @@ async function exchangeCodeForToken(code) {
  * @param {string} accessToken
  */
 async function disconnect(accessToken) {
-    const res = await fetch(`${FINCH_API_BASE}/disconnect`, {
-        method: 'POST',
-        headers: {
-            'Finch-API-Version': FINCH_API_VERSION,
-            Authorization: `Bearer ${accessToken}`,
-        },
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-        throw new Error(data?.message || `Finch disconnect failed (${res.status})`);
-    }
-    return data; // { status: 'success' }
+    return finchRequest('/disconnect', { method: 'POST', accessToken });
 }
 
-module.exports = { createConnectSession, exchangeCodeForToken, disconnect };
+/**
+ * Lists payroll runs (payments) in a date range.
+ * @param {string} accessToken
+ * @param {{ startDate: string, endDate: string }} range - YYYY-MM-DD
+ */
+async function getPayments(accessToken, { startDate, endDate }) {
+    const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
+    return finchRequest(`/employer/payment?${params.toString()}`, { accessToken });
+}
+
+/**
+ * Fetches pay statements (per-individual breakdown) for up to 10 payments
+ * at a time, per Finch's batch limit.
+ * @param {string} accessToken
+ * @param {string[]} paymentIds
+ */
+async function getPayStatements(accessToken, paymentIds) {
+    const batches = [];
+    for (let i = 0; i < paymentIds.length; i += 10) {
+        batches.push(paymentIds.slice(i, i + 10));
+    }
+
+    const allStatements = [];
+    for (const batch of batches) {
+        const data = await finchRequest('/employer/pay-statement', {
+            method: 'POST',
+            accessToken,
+            body: { requests: batch.map((payment_id) => ({ payment_id })) },
+        });
+        for (const response of data.responses || []) {
+            if (response.code === 200) {
+                for (const statement of response.body?.pay_statements || []) {
+                    allStatements.push({ ...statement, payment_id: response.payment_id });
+                }
+            } else {
+                console.error(`Finch pay-statement lookup failed for payment ${response.payment_id}:`, response.body);
+            }
+        }
+    }
+    return allStatements;
+}
+
+/**
+ * Fetches basic profile info for a batch of individuals (best-effort,
+ * enrichment only - failures here shouldn't abort a sync).
+ * @param {string} accessToken
+ * @param {string[]} individualIds
+ */
+async function getIndividuals(accessToken, individualIds) {
+    const data = await finchRequest('/employer/individual', {
+        method: 'POST',
+        accessToken,
+        body: { requests: individualIds.map((individual_id) => ({ individual_id })) },
+    });
+    const byId = {};
+    for (const response of data.responses || []) {
+        if (response.code === 200) byId[response.individual_id] = response.body;
+    }
+    return byId;
+}
+
+/**
+ * Fetches employment details for a batch of individuals.
+ * @param {string} accessToken
+ * @param {string[]} individualIds
+ */
+async function getEmployments(accessToken, individualIds) {
+    const data = await finchRequest('/employer/employment', {
+        method: 'POST',
+        accessToken,
+        body: { requests: individualIds.map((individual_id) => ({ individual_id })) },
+    });
+    const byId = {};
+    for (const response of data.responses || []) {
+        if (response.code === 200) byId[response.individual_id] = response.body;
+    }
+    return byId;
+}
+
+module.exports = {
+    FinchReauthRequiredError,
+    createConnectSession,
+    exchangeCodeForToken,
+    disconnect,
+    getPayments,
+    getPayStatements,
+    getIndividuals,
+    getEmployments,
+};
