@@ -174,6 +174,91 @@ module.exports = function () {
     };
 
     /**
+     * Step 1 of password reset.
+     * Body: { email }
+     * Sends a fresh OTP to an existing active account. Re-uses the same
+     * otp/otp_exp_time columns as registration; calling this again (e.g. for
+     * "resend code") simply regenerates and re-sends the OTP.
+     */
+    module.ForgotPassword = async (req, res) => {
+        try {
+            const required = { email: req.body.email };
+            await helper.validObject(required, {});
+
+            const user = await Users.findOne({
+                where: { email: required.email, is_active: 1, is_deleted: 0 },
+            });
+
+            if (!user) {
+                return helper.error(res, "No account found with this email");
+            }
+
+            const otp = generateOtp();
+            const otp_exp_time = (Date.now() + OTP_TTL_MS).toString();
+            await user.update({ otp, otp_exp_time });
+
+            const { message } = await helper.generate_email_content("reset_password_otp_email", "otp_email", {
+                otp_code: otp,
+            });
+            await helper.send_email({
+                email: required.email,
+                subject: "Reset Your Password",
+                message,
+            });
+
+            return helper.success(res, "A password reset code has been sent to your email", {
+                email: required.email,
+            });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
+     * Step 2 of password reset.
+     * Body: { email, otp, password }
+     * Verifies the OTP and, if valid and unexpired, sets the new password.
+     */
+    module.ResetPassword = async (req, res) => {
+        try {
+            const required = {
+                email: req.body.email,
+                otp: req.body.otp,
+                password: req.body.password,
+            };
+
+            await helper.validObject(required, {});
+
+            const user = await Users.findOne({
+                where: { email: required.email, is_active: 1, is_deleted: 0 },
+            });
+
+            if (!user) {
+                return helper.error(res, "No account found with this email");
+            }
+
+            if (parseInt(required.otp, 10) !== user.otp) {
+                return helper.error(res, "Invalid OTP");
+            }
+
+            if (!user.otp_exp_time || Date.now() > parseInt(user.otp_exp_time, 10)) {
+                return helper.error(res, "OTP has expired. Please request a new one");
+            }
+
+            const hashedPassword = await bcrypt.hash(required.password.toString(), saltRounds);
+            await user.update({
+                password: hashedPassword,
+                otp: null,
+                otp_exp_time: null,
+            });
+
+            return helper.success(res, "Password reset successfully");
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
      * Sign in / sign up with Google.
      * Body: { credential } (the ID token from Google Identity Services)
      * Verifies the token, then finds-or-creates the user. Google has already

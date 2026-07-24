@@ -17,6 +17,10 @@ router.post('/verify-otp', Auth.VerifyOtp);
 router.post('/resend-otp', Auth.ResendOtp);
 router.post('/google-login', Auth.GoogleLogin);
 
+// Password reset with email OTP
+router.post('/forgot-password', Auth.ForgotPassword);
+router.post('/reset-password', Auth.ResetPassword);
+
 // Profile (protected)
 router.get('/profile', verify_token, Profile.GetProfile);
 router.put('/profile', verify_token, Profile.UpdateProfile);
