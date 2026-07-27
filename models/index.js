@@ -18,6 +18,7 @@ if (env === 'development') {
     process.env.DEV_PASSWORD,
     {
       host: process.env.DEV_HOST,
+      port: process.env.DEV_PORT || 3306,
       dialect: 'mysql',
       logging: process.env.LOGGING == 1 ? console.log : false
 
@@ -31,6 +32,7 @@ if (env === 'development') {
     process.env.PROD_PASSWORD,
     {
       host: process.env.PROD_HOST,
+      port: process.env.PROD_PORT || 3306,
       dialect: 'mysql',
       logging: process.env.LOGGING == 1 ? console.log : false
 
@@ -43,6 +45,7 @@ if (env === 'development') {
     process.env.DEFAULT_PASSWORD,
     {
       host: process.env.DEFAULT_HOST,
+      port: process.env.DEFAULT_PORT || 3306,
       dialect: 'mysql',
       logging: process.env.LOGGING == 1 ? console.log : false
     }
