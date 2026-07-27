@@ -3,12 +3,16 @@ var router = express.Router();
 let AdminAuth = require('../src/admin/auth/auth')();
 let Subscriber = require('../src/admin/subscriber/subscriber')();
 let User = require('../src/admin/user/user')();
+let Analytics = require('../src/admin/analytics/analytics')();
 let Profile = require('../src/users/profile/profile')();
 let verify_token = require('../helper/helper').verify_token;
 let verify_admin = require('../helper/helper').verify_admin;
 
 // Auth
 router.post('/login', AdminAuth.LoginAdmin);
+
+// Dashboard analytics (admin only)
+router.get('/dashboard-stats', verify_admin, Analytics.GetDashboardStats);
 
 // Subscriber (admin only)
 router.get('/subscriber-list', verify_admin, Subscriber.GetSubscriber);

@@ -1,3 +1,5 @@
+const frontendUrl = process.env.FRONTEND_URL
+
 module.exports = {
   otp_email: (content) =>
     `<!DOCTYPE html>
@@ -246,7 +248,7 @@ module.exports = {
     <p>Hi ${content.name},</p>
     <p>We received a request to reset your password. Click the button below to choose a new one:</p>
 
-    <a href="http://localhost:5174/${content.link}" class="button">Reset Password</a>
+    <a href="${frontendUrl}/${content.link}" class="button">Reset Password</a>
 
     <p>If you did not request a password reset, please ignore this email. The link will expire in 1hr.</p>
 
