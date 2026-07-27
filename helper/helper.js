@@ -59,7 +59,7 @@ module.exports = {
         try {
             if (process.env.EMAIL_SEND == 1) {
                 const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
-                const emailContent = `From: tushar <${GMAIL_USER}>\r\n` +
+                const emailContent = `From: SmartStub <${GMAIL_USER}>\r\n` +
                     `To: ${data.email}\r\n` +
                     `Subject: =?UTF-8?B?${Buffer.from(data.subject).toString("base64")}?=\r\n` +
                     `MIME-Version: 1.0\r\n` +
