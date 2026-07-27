@@ -1,6 +1,6 @@
 const db = require('../models')
 const Users = db.users
-const { Resend } = require('resend');
+const { google } = require("googleapis");
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
@@ -9,16 +9,15 @@ const randomstring = require("randomstring")
 const sanitizeHtml = require('sanitize-html');
 const templates = require('../notifications/email_templates');
 
-let resendClient = null;
-function getResendClient() {
-    if (!process.env.RESEND_API_KEY) {
-        throw new Error('RESEND_API_KEY is not configured');
-    }
-    if (!resendClient) {
-        resendClient = new Resend(process.env.RESEND_API_KEY);
-    }
-    return resendClient;
-}
+let client_id = process.env.EMAIL_CLIENT_ID;
+let client_secret = process.env.EMAIL_CLIENT_SECRET;
+let redirect_url = process.env.EMAIL_REDIRECT_URL;
+let refresh_token = process.env.EMAIL_REFRESH_TOKEN;
+let gmail_user = process.env.EMAIL_USER;
+
+const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_url);
+oAuth2Client.setCredentials({ refresh_token: refresh_token });
+const GMAIL_USER = gmail_user;
 
 
 
@@ -59,19 +58,26 @@ module.exports = {
     send_email: async (data) => {
         try {
             if (process.env.EMAIL_SEND == 1) {
-                const resend = getResendClient();
-                const { data: result, error } = await resend.emails.send({
-                    from: process.env.EMAIL_FROM || 'SmartStub <onboarding@resend.dev>',
-                    to: data.email,
-                    subject: data.subject,
-                    html: data.message,
-                });
+                const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+                const emailContent = `From: tushar <${GMAIL_USER}>\r\n` +
+                    `To: ${data.email}\r\n` +
+                    `Subject: =?UTF-8?B?${Buffer.from(data.subject).toString("base64")}?=\r\n` +
+                    `MIME-Version: 1.0\r\n` +
+                    `Content-Type: text/html; charset=UTF-8\r\n` +
+                    `Content-Transfer-Encoding: base64\r\n\r\n` +
+                    `${Buffer.from(data.message).toString("base64")}`;
 
-                if (error) {
-                    console.error('Error sending email:', error);
-                    return false;
-                }
-                console.log('Email sent successfully:', result?.id);
+                const encodedMessage = Buffer.from(emailContent)
+                    .toString("base64")
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '');
+
+                const result = await gmail.users.messages.send({
+                    userId: "me",
+                    requestBody: { raw: encodedMessage }
+                });
+                console.log("Email sent successfully:", result.data);
             } else {
                 console.log("Email not sent:");
                 return true;
