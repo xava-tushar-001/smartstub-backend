@@ -30,6 +30,10 @@ module.exports = function () {
                 return helper.error(res, "User not found");
             }
 
+            if (user.status === 'suspended') {
+                return helper.error(res, "This account has been suspended");
+            }
+
             const isPasswordValid = await bcrypt.compare(required.password, user.password);
 
             if (!isPasswordValid) {
@@ -45,7 +49,8 @@ module.exports = function () {
 
             let response = {
                 token: token,
-                user_type: user.user_type
+                user_type: user.user_type,
+                plan_selected: user.plan_selected,
             }
 
             return helper.success(res, "User fetched successfully", response);

@@ -9,7 +9,7 @@ module.exports = function () {
         try {
             const user = await Users.findOne({
                 where: { id: req.user.id },
-                attributes: ["id", "name", "email", "about", "image", "createdAt"],
+                attributes: ["id", "name", "email", "about", "image", "createdAt", "plan", "plan_selected"],
             });
 
             if (!user) {
@@ -17,6 +17,39 @@ module.exports = function () {
             }
 
             return helper.success(res, "Profile fetched successfully", { user });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
+     * Records the user's choice on the post-verification Plan Selection
+     * screen. Body: { plan: 'free' | 'paid' }
+     * Picking 'free' takes effect immediately (it's already the default).
+     * Picking 'paid' only marks the screen as done - the frontend still has
+     * to complete Stripe checkout separately to actually become Pro.
+     */
+    module.SelectPlan = async (req, res) => {
+        try {
+            const plan = req.body.plan;
+            if (plan !== 'free' && plan !== 'paid') {
+                return helper.error(res, "plan must be 'free' or 'paid'");
+            }
+
+            const user = await Users.findOne({ where: { id: req.user.id } });
+            if (!user) {
+                return helper.error(res, "User not found");
+            }
+
+            await user.update({
+                plan_selected: true,
+                ...(plan === 'free' ? { plan: 'free' } : {}),
+            });
+
+            return helper.success(res, "Plan selection saved", {
+                plan: user.plan,
+                plan_selected: true,
+            });
         } catch (error) {
             return helper.error(res, error);
         }

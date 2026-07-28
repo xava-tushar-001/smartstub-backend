@@ -24,6 +24,39 @@ function getCredentials() {
     return { clientId, clientSecret };
 }
 
+const isSandboxMode = () => process.env.FINCH_SANDBOX !== '0';
+
+/**
+ * Logs the active Finch mode at boot so it's impossible to miss whether a
+ * deploy is quietly running against Finch's sandbox instead of live payroll
+ * providers. In production, a sandbox client secret containing "sandbox" is
+ * flagged explicitly, since that's the actual footgun this guards against -
+ * FINCH_SANDBOX left at its default while production credentials were never
+ * swapped in.
+ */
+function logFinchMode() {
+    const sandbox = isSandboxMode();
+    const secret = process.env.FINCH_CLIENT_SECRET || '';
+    const looksLikeSandboxSecret = secret.includes('sandbox');
+    const label = sandbox ? 'SANDBOX' : 'LIVE';
+
+    console.log(`[Finch] mode: ${label}${sandbox ? '' : ' (production payroll providers)'}`);
+
+    if (process.env.NODE_ENV === 'production' && sandbox) {
+        console.warn(
+            '[Finch] WARNING: running in production (NODE_ENV=production) with FINCH_SANDBOX not set to "0". ' +
+            'Payroll connections will go through Finch\'s sandbox, not real providers. ' +
+            'Set FINCH_SANDBOX=0 and swap in live FINCH_CLIENT_ID/FINCH_CLIENT_SECRET before go-live.'
+        );
+    }
+    if (process.env.NODE_ENV === 'production' && !sandbox && looksLikeSandboxSecret) {
+        console.warn(
+            '[Finch] WARNING: FINCH_SANDBOX=0 but FINCH_CLIENT_SECRET still looks like a sandbox secret. ' +
+            'Double-check these are live Finch credentials, not the sandbox pair.'
+        );
+    }
+}
+
 function basicAuthHeader(clientId, clientSecret) {
     return `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
 }
@@ -203,6 +236,8 @@ async function getEmployments(accessToken, individualIds) {
 
 module.exports = {
     FinchReauthRequiredError,
+    isSandboxMode,
+    logFinchMode,
     createConnectSession,
     exchangeCodeForToken,
     disconnect,

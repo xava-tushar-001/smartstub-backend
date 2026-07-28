@@ -30,6 +30,15 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       defaultValue: 'active'
     },
+    // True when the connection was auto-disconnected because Finch signalled
+    // reauthenticate_user (vs. a user- or admin-initiated disconnect). Lets
+    // admin monitoring distinguish "needs the user to reconnect" from a plain
+    // disconnect. Cleared on the next successful Connect.
+    reauth_required: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
     last_sync_at: {
       type: DataTypes.DATE,
       allowNull: true

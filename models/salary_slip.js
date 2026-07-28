@@ -76,6 +76,22 @@ module.exports = function (sequelize, DataTypes) {
     error_message: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    // Set when an admin has hand-edited the checks/overall_status/summary
+    // below via the manual-correction interface, as opposed to the stored
+    // result being straight from Gemini.
+    admin_overridden: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    admin_reviewed_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    admin_note: {
+      type: DataTypes.TEXT,
+      allowNull: true
     }
   }, {
     sequelize,

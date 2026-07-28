@@ -129,6 +129,7 @@ module.exports = function () {
             return helper.success(res, "Account created successfully", {
                 token,
                 user_type: user.user_type,
+                plan_selected: user.plan_selected,
             });
         } catch (error) {
             return helper.error(res, error);
@@ -310,6 +311,7 @@ module.exports = function () {
             return helper.success(res, "Logged in with Google successfully", {
                 token,
                 user_type: user.user_type,
+                plan_selected: user.plan_selected,
             });
         } catch (error) {
             return helper.error(res, error);

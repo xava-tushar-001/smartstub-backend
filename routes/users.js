@@ -24,6 +24,7 @@ router.post('/reset-password', Auth.ResetPassword);
 // Profile (protected)
 router.get('/profile', verify_token, Profile.GetProfile);
 router.put('/profile', verify_token, Profile.UpdateProfile);
+router.post('/select-plan', verify_token, Profile.SelectPlan);
 
 // Salary slip analysis (protected)
 router.post('/salary-slips', verify_token, SalarySlip.Upload);

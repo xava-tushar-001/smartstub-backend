@@ -50,6 +50,22 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: true,
       defaultValue: 0
     },
+    // active | suspended - separate from is_active (email verification) and
+    // is_deleted (account removal), set by an admin via the user management panel.
+    status: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'active'
+    },
+    // Whether the user has been through the post-verification Plan Selection
+    // screen. Free/Pro is already tracked on `plan` - this just tracks whether
+    // that choice was ever presented, so the frontend knows to route new
+    // accounts through onboarding exactly once.
+    plan_selected: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
     // free | paid
     plan: {
       type: DataTypes.STRING(10),

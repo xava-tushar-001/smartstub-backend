@@ -13,6 +13,7 @@ function serializeConnection(connection) {
     return {
         provider: connection.provider,
         status: connection.status,
+        reauth_required: !!connection.reauth_required,
         last_sync_at: connection.last_sync_at,
         connected_at: connection.createdAt,
     };
@@ -71,6 +72,7 @@ module.exports = function () {
                 finch_account_id: tokenResponse.connection_id || null,
                 finch_token: encryptedToken,
                 status: 'active',
+                reauth_required: false,
                 last_sync_at: new Date(),
             };
 
@@ -118,7 +120,7 @@ module.exports = function () {
                 console.error('Finch disconnect call failed (continuing to mark disconnected locally):', finchError);
             }
 
-            await connection.update({ status: 'disconnected' });
+            await connection.update({ status: 'disconnected', reauth_required: false });
 
             return helper.success(res, 'Payroll account disconnected', { connection: serializeConnection(connection) });
         } catch (error) {

@@ -62,7 +62,7 @@ module.exports = function () {
             });
         } catch (error) {
             if (error instanceof finch.FinchReauthRequiredError) {
-                await connection.update({ status: 'disconnected' });
+                await connection.update({ status: 'disconnected', reauth_required: true });
                 throw reauthError();
             }
             console.error('PayrollSync: Finch getPayments failed:', error);
@@ -81,7 +81,7 @@ module.exports = function () {
             statements = await finch.getPayStatements(accessToken, payments.map((p) => p.id));
         } catch (error) {
             if (error instanceof finch.FinchReauthRequiredError) {
-                await connection.update({ status: 'disconnected' });
+                await connection.update({ status: 'disconnected', reauth_required: true });
                 throw reauthError();
             }
             console.error('PayrollSync: Finch getPayStatements failed:', error);

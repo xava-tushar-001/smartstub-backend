@@ -1,10 +1,13 @@
 const mysql = require('mysql2/promise');
 const db = require('./models');
 const bcrypt = require('bcrypt');
+const { logFinchMode } = require('./helper/finch');
 const saltRounds = 10;
 
 const migration_seeders = (async () => {
   try {
+    logFinchMode();
+
     await db.sequelize.sync({ alter: false });
     // await db.sequelize.sync({ alter: true });
     console.log('Database synced successfully');

@@ -121,7 +121,7 @@ module.exports = {
                     raw: true,
                 })
 
-                if (!user) {
+                if (!user || user.is_deleted || user.status === 'suspended') {
                     return res.status(401).json({
                         status: false,
                         message: "authorization",
@@ -177,7 +177,7 @@ module.exports = {
                     raw: true,
                 })
 
-                if (!user || user.user_type !== 1) {
+                if (!user || user.user_type !== 1 || user.is_deleted || user.status === 'suspended') {
                     return res.status(401).json({
                         status: false,
                         message: "authorization",
