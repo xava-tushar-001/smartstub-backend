@@ -6,6 +6,7 @@ let Profile = require('../src/users/profile/profile')();
 let SalarySlip = require('../src/users/salary_slip/salary_slip')();
 let Billing = require('../src/users/billing/billing')();
 let Payroll = require('../src/users/payroll/payroll')();
+let Support = require('../src/users/support/support')();
 let verify_token = require('../helper/helper').verify_token;
 
 // Waitlist / newsletter
@@ -46,5 +47,11 @@ router.get('/payroll/status', verify_token, Payroll.GetStatus);
 router.post('/payroll/disconnect', verify_token, Payroll.Disconnect);
 router.post('/payroll/sync', verify_token, Payroll.Sync);
 router.get('/payroll/history', verify_token, Payroll.GetHistory);
+
+// Support tickets (protected)
+router.post('/support-tickets', verify_token, Support.Create);
+router.get('/support-tickets', verify_token, Support.List);
+router.get('/support-tickets/:id', verify_token, Support.GetOne);
+router.post('/support-tickets/:id/messages', verify_token, Support.AddMessage);
 
 module.exports = router;

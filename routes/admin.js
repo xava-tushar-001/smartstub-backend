@@ -6,6 +6,7 @@ let User = require('../src/admin/user/user')();
 let Analytics = require('../src/admin/analytics/analytics')();
 let AdminPayroll = require('../src/admin/payroll/payroll')();
 let AdminSalarySlip = require('../src/admin/salary_slip/salary_slip')();
+let AdminSupport = require('../src/admin/support/support')();
 let Profile = require('../src/users/profile/profile')();
 let verify_token = require('../helper/helper').verify_token;
 let verify_admin = require('../helper/helper').verify_admin;
@@ -40,6 +41,12 @@ router.post('/payroll-connections/:id/disconnect', verify_admin, AdminPayroll.Di
 router.get('/salary-slips/:id', verify_admin, AdminSalarySlip.GetOne);
 router.put('/salary-slips/:id', verify_admin, AdminSalarySlip.Override);
 router.post('/salary-slips/:id/retry', verify_admin, AdminSalarySlip.Retry);
+
+// Support tickets (admin only)
+router.get('/support-tickets', verify_admin, AdminSupport.GetTickets);
+router.get('/support-tickets/:id', verify_admin, AdminSupport.GetTicketDetail);
+router.put('/support-tickets/:id', verify_admin, AdminSupport.UpdateStatus);
+router.post('/support-tickets/:id/messages', verify_admin, AdminSupport.Reply);
 
 // Profile (protected)
 router.get('/profile', verify_token, Profile.GetProfile);

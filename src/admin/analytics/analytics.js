@@ -52,10 +52,12 @@ module.exports = function () {
         try {
             const userWhere = { user_type: 0, is_deleted: 0 };
 
-            const [totalUsers, freeUsers, paidUsers, totalSlips, payrollConnected, payrollReauthRequired] = await Promise.all([
+            const [totalUsers, freeUsers, paidUsers, activeUsers, disabledUsers, totalSlips, payrollConnected, payrollReauthRequired] = await Promise.all([
                 Users.count({ where: userWhere }),
                 Users.count({ where: { ...userWhere, plan: 'free' } }),
                 Users.count({ where: { ...userWhere, plan: 'paid' } }),
+                Users.count({ where: { ...userWhere, status: 'active' } }),
+                Users.count({ where: { ...userWhere, status: 'suspended' } }),
                 SalarySlip.count(),
                 PayrollConnection.count({ where: { status: 'active' } }),
                 PayrollConnection.count({ where: { reauth_required: true } }),
@@ -71,6 +73,8 @@ module.exports = function () {
                     users: totalUsers,
                     free_users: freeUsers,
                     paid_users: paidUsers,
+                    active_users: activeUsers,
+                    disabled_users: disabledUsers,
                     salary_slips: totalSlips,
                     payroll_connected: payrollConnected,
                     payroll_reauth_required: payrollReauthRequired,
