@@ -11,12 +11,14 @@ async function findUserByCustomerId(customerId) {
 
 async function applySubscriptionToUser(user, subscription) {
     const isActive = ACTIVE_STATUSES.includes(subscription.status);
+    const periodStartSeconds = subscription.current_period_start;
     const periodEndSeconds = subscription.current_period_end;
 
     await user.update({
         plan: isActive ? 'paid' : 'free',
         stripe_subscription_id: subscription.id,
         subscription_status: subscription.status,
+        current_period_start: isActive && periodStartSeconds ? new Date(periodStartSeconds * 1000) : null,
         current_period_end: periodEndSeconds ? new Date(periodEndSeconds * 1000) : null,
     });
 }
@@ -96,6 +98,7 @@ module.exports = async function stripeWebhook(req, res) {
                     await user.update({
                         plan: 'free',
                         subscription_status: 'canceled',
+                        current_period_start: null,
                         current_period_end: null,
                     });
                 }

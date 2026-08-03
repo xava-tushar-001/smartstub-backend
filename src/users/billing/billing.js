@@ -2,7 +2,7 @@ const helper = require('../../../helper/helper');
 const db = require("../../../models");
 const Users = db.users;
 const { getClient } = require('../../../helper/stripe');
-const { getPlanLimit, getMonthlyUploadCount } = require('../../../helper/plan');
+const { getUsageForUser } = require('../../../helper/plan');
 
 module.exports = function () {
     let module = {};
@@ -12,15 +12,15 @@ module.exports = function () {
      */
     module.GetStatus = async (req, res) => {
         try {
-            const usageCount = await getMonthlyUploadCount(req.user.id);
+            const { count, limit, effectivePlan } = await getUsageForUser(req.user);
 
             return helper.success(res, "Billing status", {
-                plan: req.user.plan || 'free',
+                plan: effectivePlan,
                 subscription_status: req.user.subscription_status,
-                current_period_end: req.user.current_period_end,
+                current_period_end: effectivePlan === 'paid' ? req.user.current_period_end : null,
                 usage: {
-                    count: usageCount,
-                    limit: getPlanLimit(req.user.plan || 'free'),
+                    count,
+                    limit,
                 },
             });
         } catch (error) {

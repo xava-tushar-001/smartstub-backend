@@ -88,6 +88,14 @@ module.exports = function (sequelize, DataTypes) {
     current_period_end: {
       type: DataTypes.DATE,
       allowNull: true
+    },
+    // Start of the current billing period - used to scope the Pro plan's
+    // "10 additional uploads" quota to the subscription period (not a
+    // calendar month), so a renewal grants a fresh 10 rather than resetting
+    // on the 1st of the next calendar month.
+    current_period_start: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize,

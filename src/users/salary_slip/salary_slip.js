@@ -3,8 +3,9 @@ const db = require("../../../models");
 const { Op } = require('sequelize');
 const SalarySlip = db.salary_slip;
 const { analyzeSalarySlip } = require('../../../helper/gemini');
-const { getPlanLimit, getMonthlyUploadCount } = require('../../../helper/plan');
+const { getUsageForUser, getEffectivePlan } = require('../../../helper/plan');
 const { getPdfPageCount, generateSalarySlipReport } = require('../../../helper/pdf');
+const { parseCurrencyValue } = require('../../../helper/money');
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -53,17 +54,15 @@ module.exports = function () {
                 }
             }
 
-            const plan = req.user.plan || 'free';
-            const limit = getPlanLimit(plan);
-            const usedThisMonth = await getMonthlyUploadCount(req.user.id);
+            const { count: used, limit, effectivePlan: plan } = await getUsageForUser(req.user);
 
-            if (usedThisMonth >= limit) {
+            if (used >= limit) {
                 return helper.error(
                     res,
                     plan === 'free'
-                        ? `You've used all ${limit} free payslip uploads this month. Upgrade to Pro for up to 12/month.`
-                        : `You've reached your Pro plan limit of ${limit} payslip uploads this month.`,
-                    { limit_reached: true, plan, limit, used: usedThisMonth }
+                        ? `You've used all ${limit} free payslip uploads. Upgrade to Pro for 10 more this billing period.`
+                        : `You've reached your Pro plan limit of ${limit} payslip uploads for this subscription period.`,
+                    { limit_reached: true, plan, limit, used }
                 );
             }
 
@@ -175,6 +174,29 @@ module.exports = function () {
             });
             const monthlyByKey = new Map(monthlyRows.map((r) => [r.month, Number(r.count)]));
 
+            // salary_details is JSON/LONGTEXT with freeform currency strings
+            // (e.g. "₹82,250.00") straight from Gemini's extraction, so these
+            // totals can't be SUMmed in SQL - pull just that column for
+            // completed slips and reduce it in JS.
+            const completedSlips = await SalarySlip.findAll({
+                where: { user_id: userId, status: 'completed' },
+                attributes: ['salary_details'],
+                // Not raw - salary_details is stored as LONGTEXT (MariaDB has
+                // no native JSON type), and only the model's getter parses it
+                // back into an object; a raw query would hand back the
+                // unparsed JSON string instead.
+            });
+
+            let grossPayTotal = 0;
+            let netPayTotal = 0;
+            let taxDeductionTotal = 0;
+            for (const row of completedSlips) {
+                const details = row.salary_details || {};
+                grossPayTotal += parseCurrencyValue(details.gross_pay);
+                netPayTotal += parseCurrencyValue(details.net_pay);
+                taxDeductionTotal += parseCurrencyValue(details.tax_deduction);
+            }
+
             const monthly_uploads = [];
             const cursor = new Date(rangeStart);
             for (let i = 0; i < 6; i++) {
@@ -192,6 +214,9 @@ module.exports = function () {
                     pass: Number(totalsRow.pass_total) || 0,
                     warning: Number(totalsRow.warning_total) || 0,
                     error: Number(totalsRow.error_total) || 0,
+                    gross_pay: grossPayTotal,
+                    net_pay: netPayTotal,
+                    tax_deduction: taxDeductionTotal,
                 },
                 monthly_uploads,
             });
@@ -279,7 +304,7 @@ module.exports = function () {
      */
     module.DownloadReport = async (req, res) => {
         try {
-            if (req.user.plan !== 'paid') {
+            if (getEffectivePlan(req.user) !== 'paid') {
                 return helper.error(res, PAID_SUBSCRIPTION_REQUIRED_MESSAGE, { subscription_required: true });
             }
 

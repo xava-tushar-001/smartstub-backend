@@ -3,6 +3,7 @@ const db = require("../../../models");
 const PayrollConnection = db.payroll_connection;
 const { createConnectSession, exchangeCodeForToken, disconnect: finchDisconnect } = require('../../../helper/finch');
 const { encrypt, decrypt } = require('../../../helper/crypto');
+const { getEffectivePlan } = require('../../../helper/plan');
 const payrollSync = require('./payrollSync')();
 
 const PAID_SUBSCRIPTION_REQUIRED_MESSAGE = 'A paid subscription is required to connect your payroll account.';
@@ -28,7 +29,7 @@ module.exports = function () {
      */
     module.CreateSession = async (req, res) => {
         try {
-            if (req.user.plan !== 'paid') {
+            if (getEffectivePlan(req.user) !== 'paid') {
                 return helper.error(res, PAID_SUBSCRIPTION_REQUIRED_MESSAGE, { subscription_required: true });
             }
 
@@ -53,7 +54,7 @@ module.exports = function () {
      */
     module.Connect = async (req, res) => {
         try {
-            if (req.user.plan !== 'paid') {
+            if (getEffectivePlan(req.user) !== 'paid') {
                 return helper.error(res, PAID_SUBSCRIPTION_REQUIRED_MESSAGE, { subscription_required: true });
             }
 
@@ -136,7 +137,7 @@ module.exports = function () {
      */
     module.Sync = async (req, res) => {
         try {
-            if (req.user.plan !== 'paid') {
+            if (getEffectivePlan(req.user) !== 'paid') {
                 return helper.error(res, PAID_SUBSCRIPTION_REQUIRED_MESSAGE, { subscription_required: true });
             }
 
