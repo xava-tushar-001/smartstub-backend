@@ -4,11 +4,12 @@ const { Op } = require('sequelize');
 const SalarySlip = db.salary_slip;
 const { analyzeSalarySlip } = require('../../../helper/gemini');
 const { getPlanLimit, getMonthlyUploadCount } = require('../../../helper/plan');
-const { getPdfPageCount } = require('../../../helper/pdf');
+const { getPdfPageCount, generateSalarySlipReport } = require('../../../helper/pdf');
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_PDF_PAGES = 4;
+const PAID_SUBSCRIPTION_REQUIRED_MESSAGE = 'A paid subscription is required to download a salary slip report.';
 
 function serializeSlip(slip) {
     const json = slip.toJSON();
@@ -76,7 +77,7 @@ module.exports = function () {
             });
 
             try {
-                const { summary, checks } = await analyzeSalarySlip(file.data, file.mimetype);
+                const { summary, checks, salary_details } = await analyzeSalarySlip(file.data, file.mimetype);
 
                 const pass_count = checks.filter((c) => c.status === 'pass').length;
                 const warning_count = checks.filter((c) => c.status === 'warning').length;
@@ -87,6 +88,7 @@ module.exports = function () {
                     status: 'completed',
                     summary,
                     checks,
+                    salary_details,
                     pass_count,
                     warning_count,
                     error_count,
@@ -239,7 +241,7 @@ module.exports = function () {
             await slip.update({ status: 'processing', error_message: null });
 
             try {
-                const { summary, checks } = await analyzeSalarySlip(slip.file_data, slip.mime_type);
+                const { summary, checks, salary_details } = await analyzeSalarySlip(slip.file_data, slip.mime_type);
 
                 const pass_count = checks.filter((c) => c.status === 'pass').length;
                 const warning_count = checks.filter((c) => c.status === 'warning').length;
@@ -250,6 +252,7 @@ module.exports = function () {
                     status: 'completed',
                     summary,
                     checks,
+                    salary_details,
                     pass_count,
                     warning_count,
                     error_count,
@@ -264,6 +267,40 @@ module.exports = function () {
             }
 
             return helper.success(res, "Analysis retried", { salary_slip: serializeSlip(slip) });
+        } catch (error) {
+            return helper.error(res, error);
+        }
+    };
+
+    /**
+     * Streams a downloadable PDF summary report of a completed salary slip's
+     * extracted salary figures and validation checks. Pro-only - enforced
+     * here, not just hidden in the UI.
+     */
+    module.DownloadReport = async (req, res) => {
+        try {
+            if (req.user.plan !== 'paid') {
+                return helper.error(res, PAID_SUBSCRIPTION_REQUIRED_MESSAGE, { subscription_required: true });
+            }
+
+            const slip = await SalarySlip.findOne({
+                where: { id: req.params.id, user_id: req.user.id },
+                attributes: { exclude: ['file_data'] },
+            });
+
+            if (!slip) {
+                return helper.error(res, "Salary slip not found");
+            }
+
+            if (slip.status !== 'completed') {
+                return helper.error(res, "Only a completed analysis can be downloaded as a report");
+            }
+
+            const pdfBuffer = await generateSalarySlipReport(slip);
+
+            res.set('Content-Type', 'application/pdf');
+            res.set('Content-Disposition', `attachment; filename="${slip.file_name.replace(/[\r\n"]/g, '')}-report.pdf"`);
+            return res.send(pdfBuffer);
         } catch (error) {
             return helper.error(res, error);
         }

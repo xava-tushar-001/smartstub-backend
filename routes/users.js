@@ -33,6 +33,7 @@ router.get('/salary-slips', verify_token, SalarySlip.List);
 router.get('/salary-slips/stats', verify_token, SalarySlip.GetStats);
 router.get('/salary-slips/:id', verify_token, SalarySlip.GetOne);
 router.get('/salary-slips/:id/file', verify_token, SalarySlip.GetFile);
+router.get('/salary-slips/:id/report', verify_token, SalarySlip.DownloadReport);
 router.post('/salary-slips/:id/retry', verify_token, SalarySlip.Retry);
 
 // Billing (protected)

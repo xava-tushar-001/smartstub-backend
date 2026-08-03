@@ -58,6 +58,20 @@ module.exports = function (sequelize, DataTypes) {
         }
       },
     },
+    // { gross_pay, net_pay, tax_deduction, other: [{ label, value }] }
+    salary_details: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      get() {
+        const raw = this.getDataValue('salary_details');
+        if (typeof raw !== 'string') return raw;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      },
+    },
     pass_count: {
       type: DataTypes.INTEGER,
       allowNull: false,

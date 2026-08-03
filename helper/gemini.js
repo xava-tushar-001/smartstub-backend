@@ -18,7 +18,9 @@ For each check, decide a status:
 - "warning": something looks unusual, incomplete, or worth double-checking, but is not clearly an error.
 - "error": something is missing, inconsistent, miscalculated, or fails validation.
 
-Produce at least 4 checks covering different aspects of the document. Be specific in each check's message and reference actual numbers from the document where relevant. Respond only with JSON matching the given schema - no prose.`;
+Produce at least 4 checks covering different aspects of the document. Be specific in each check's message and reference actual numbers from the document where relevant.
+
+Also extract the key salary figures shown on the document (gross pay, net pay, total tax deducted, and any other relevant figures such as pay period, employer name, overtime pay, bonuses, YTD totals, or other deductions), as exact strings including currency symbols where shown. Leave a field as an empty string if it isn't present on the document. Respond only with JSON matching the given schema - no prose.`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -49,8 +51,39 @@ const RESPONSE_SCHEMA = {
         required: ['name', 'status', 'message'],
       },
     },
+    salary_details: {
+      type: 'object',
+      description: 'Key salary figures extracted verbatim from the document (with currency symbols where shown). Use an empty string for any figure not present.',
+      properties: {
+        gross_pay: {
+          type: 'string',
+          description: "This period's gross pay, or empty string if not present.",
+        },
+        net_pay: {
+          type: 'string',
+          description: "This period's net (take-home) pay, or empty string if not present.",
+        },
+        tax_deduction: {
+          type: 'string',
+          description: "This period's total tax withheld/deducted, or empty string if not present.",
+        },
+        other: {
+          type: 'array',
+          description: 'Any other relevant salary figures found, e.g. pay period, employer name, overtime pay, bonuses, YTD gross/net, other deductions.',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string' },
+              value: { type: 'string' },
+            },
+            required: ['label', 'value'],
+          },
+        },
+      },
+      required: ['gross_pay', 'net_pay', 'tax_deduction', 'other'],
+    },
   },
-  required: ['summary', 'checks'],
+  required: ['summary', 'checks', 'salary_details'],
 };
 
 function getClient() {
@@ -98,7 +131,15 @@ async function analyzeSalarySlip(fileBuffer, mimeType) {
     throw new Error('Gemini did not return a structured analysis');
   }
 
-  return parsed;
+  return {
+    ...parsed,
+    salary_details: {
+      gross_pay: parsed.salary_details?.gross_pay || '',
+      net_pay: parsed.salary_details?.net_pay || '',
+      tax_deduction: parsed.salary_details?.tax_deduction || '',
+      other: Array.isArray(parsed.salary_details?.other) ? parsed.salary_details.other : [],
+    },
+  };
 }
 
 module.exports = { analyzeSalarySlip };
