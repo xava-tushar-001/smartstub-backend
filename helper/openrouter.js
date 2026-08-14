@@ -2,7 +2,8 @@ const { SYSTEM_PROMPT, RESPONSE_SCHEMA, parseModelJson, normalizeResult } = requ
 
 // Any vision-capable model listed at https://openrouter.ai/models?max_price=0 works here.
 // Override with OPENROUTER_MODEL if this one is retired or rate-limited.
-const DEFAULT_MODEL = 'google/gemma-4-26b-a4b-it:free';
+const DEFAULT_MODEL = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+// const DEFAULT_MODEL = 'google/gemma-4-26b-a4b-it:free';
 
 /**
  * Sends the uploaded salary slip to an OpenRouter-hosted model and returns
