@@ -1,7 +1,7 @@
 const helper = require('../../../helper/helper');
 const db = require("../../../models");
 const SalarySlip = db.salary_slip;
-const { analyzeSalarySlip } = require('../../../helper/gemini');
+const { analyzeSalarySlip } = require('../../../helper/salary_slip_ai');
 
 const VALID_CHECK_STATUSES = ['pass', 'warning', 'error'];
 
