@@ -103,9 +103,19 @@ module.exports = function () {
                 return helper.error(res, "Support ticket not found");
             }
 
+            const previousStatus = ticket.status;
             await ticket.update({ status });
 
             const [ticketWithUser] = await attachUsers([ticket]);
+
+            if (previousStatus !== status && ticketWithUser.user) {
+                const { message } = await helper.generate_email_content("ticket_status_updated_email", "notification_email", {
+                    ticket_subject: ticket.subject,
+                    status,
+                    cta_link: `${process.env.FRONTEND_URL}/support/${ticket.id}`,
+                });
+                await helper.send_email({ email: ticketWithUser.user.email, subject: `Your support ticket status was updated to ${status}`, message });
+            }
 
             return helper.success(res, "Support ticket updated", { ticket: ticketWithUser });
         } catch (error) {
@@ -128,6 +138,20 @@ module.exports = function () {
                 sender_type: 'admin',
                 message: required.message,
             });
+
+            const ticketOwner = await Users.findOne({
+                where: { id: ticket.user_id },
+                attributes: ["name", "email"],
+                raw: true,
+            });
+
+            if (ticketOwner) {
+                const { message: emailMessage } = await helper.generate_email_content("ticket_reply_to_user_email", "notification_email", {
+                    ticket_subject: ticket.subject,
+                    cta_link: `${process.env.FRONTEND_URL}/support/${ticket.id}`,
+                });
+                await helper.send_email({ email: ticketOwner.email, subject: `New reply on your support ticket: ${ticket.subject}`, message: emailMessage });
+            }
 
             return helper.success(res, "Reply sent", { message: savedMessage });
         } catch (error) {

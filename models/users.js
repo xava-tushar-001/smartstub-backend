@@ -57,6 +57,13 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       defaultValue: 'active'
     },
+    // Reason an admin gave when suspending this account (via the suspend
+    // modal). Cleared on reactivation since it only describes the current
+    // suspension, not a history of past ones.
+    suspend_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     // Whether the user has been through the post-verification Plan Selection
     // screen. Free/Pro is already tracked on `plan` - this just tracks whether
     // that choice was ever presented, so the frontend knows to route new

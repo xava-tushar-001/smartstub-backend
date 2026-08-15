@@ -22,6 +22,14 @@ module.exports = function () {
                 status: 'pending',
             });
 
+            const { message } = await helper.generate_email_content("new_ticket_email", "notification_email", {
+                user_name: req.user.name,
+                user_email: req.user.email,
+                ticket_subject: ticket.subject,
+                cta_link: `${process.env.ADMIN_URL}/tickets/${ticket.id}`,
+            });
+            await helper.send_email({ email: process.env.ADMIN_EMAIL, subject: `New Support Ticket: ${ticket.subject}`, message });
+
             return helper.success(res, "Support ticket created", { ticket });
         } catch (error) {
             return helper.error(res, error);
@@ -82,6 +90,14 @@ module.exports = function () {
                 sender_type: 'user',
                 message: required.message,
             });
+
+            const { message: emailMessage } = await helper.generate_email_content("ticket_reply_to_admin_email", "notification_email", {
+                user_name: req.user.name,
+                user_email: req.user.email,
+                ticket_subject: ticket.subject,
+                cta_link: `${process.env.ADMIN_URL}/tickets/${ticket.id}`,
+            });
+            await helper.send_email({ email: process.env.ADMIN_EMAIL, subject: `New reply on ticket: ${ticket.subject}`, message: emailMessage });
 
             return helper.success(res, "Message sent", { message: savedMessage });
         } catch (error) {

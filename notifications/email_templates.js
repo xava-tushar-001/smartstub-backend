@@ -293,5 +293,140 @@ module.exports = {
 </html>
 `,
 
+  notification_email: (content) =>
+    `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${content.heading}</title>
+    <style type="text/css">
+      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+      @media only screen and (max-width: 600px) {
+        .container {
+          width: 100% !important;
+        }
+      }
+      a {
+        color: #1648c0;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body
+    style="margin:0; padding:0; background-color:#f4f7ff; font-family: 'Outfit', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6;"
+  >
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      bgcolor="#f4f7ff"
+      style="padding: 40px 0;"
+    >
+      <tr>
+        <td align="center">
+          <!-- Brand Row -->
+          <table
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="max-width: 600px; margin-bottom: 20px;"
+          >
+            <tr>
+              <td align="center" style="padding: 0 0 15px 0;">
+                <img
+                  src="${frontendUrl}/logo.webp"
+                  alt="SmartStub"
+                  height="36"
+                  style="height: 36px; width: auto; vertical-align: middle; margin-right: 10px;"
+                />
+                <span
+                  style="font-size: 20px; font-weight: 700; color: #07112b; vertical-align: middle;"
+                  >SmartStub</span
+                >
+              </td>
+            </tr>
+          </table>
+
+          <!-- Content Container -->
+          <table
+            class="container"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            bgcolor="#ffffff"
+            style="max-width: 600px; border-radius: 16px; box-shadow: 0 4px 20px rgba(7,17,43,0.08); overflow: hidden;"
+          >
+            <!-- Header -->
+            <tr>
+              <td
+                bgcolor="#07112b"
+                style="background: linear-gradient(135deg, #07112b 0%, #0d2255 50%, #0b1e48 100%); padding: 28px; text-align: center;"
+              >
+                <h1
+                  style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700; letter-spacing: 0.3px;"
+                >
+                  ${content.heading}
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td
+                style="padding: 40px 30px; color: #334155; font-size: 16px; line-height: 1.6; text-align: center;"
+              >
+                <p style="margin: 0 0 15px 0;">${content.line1}</p>
+                ${content.line2 ? `<p style="margin: 0 0 25px 0;">${content.line2}</p>` : ""}
+
+                ${content.cta_link ? `
+                <!-- Call to Action -->
+                <table
+                  align="center"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="margin: 10px auto 10px auto;"
+                >
+                  <tr>
+                    <td
+                      style="border-radius: 12px; background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);"
+                    >
+                      <a
+                        href="${content.cta_link}"
+                        target="_blank"
+                        style="display: inline-block; padding: 14px 32px; color: #ffffff; font-weight: 600; text-decoration: none;"
+                        >${content.cta_text}</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+                ` : ""}
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                style="background-color: #f4f7ff; padding: 24px; text-align: center; font-size: 13px; color: #5c6b82; border-top: 1px solid #dde3ee;"
+              >
+                <p style="margin: 0 0 6px 0; font-weight: 600; color: #07112b;">
+                  SmartStub
+                </p>
+                <p style="margin: 0;">
+                  &copy; ${new Date().getFullYear()} SmartStub, Inc. Bank-level encryption &middot; your data is always private and secure.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+`,
 
 };

@@ -31,7 +31,7 @@ module.exports = function () {
             const { rows, count } = await Users.findAndCountAll({
                 where,
                 attributes: [
-                    "id", "name", "email", "is_active", "status", "createdAt",
+                    "id", "name", "email", "is_active", "status", "suspend_reason", "createdAt",
                     "plan", "subscription_status", "current_period_end",
                 ],
                 order: [["createdAt", "DESC"]],
@@ -61,7 +61,7 @@ module.exports = function () {
             const user = await Users.findOne({
                 where: { id: req.params.id, is_deleted: 0, user_type: 0 },
                 attributes: [
-                    "id", "name", "email", "about", "image", "is_active", "status", "createdAt",
+                    "id", "name", "email", "about", "image", "is_active", "status", "suspend_reason", "createdAt",
                     "plan", "subscription_status", "current_period_end", "stripe_customer_id",
                 ],
             });
@@ -145,12 +145,21 @@ module.exports = function () {
      */
     module.SuspendUser = async (req, res) => {
         try {
+            const required = { reason: req.body.reason };
+            await helper.validObject(required, {});
+
             const user = await Users.findOne({ where: { id: req.params.id, is_deleted: 0, user_type: 0 } });
             if (!user) {
                 return helper.error(res, "User not found");
             }
-            await user.update({ status: 'suspended' });
-            return helper.success(res, "User suspended", { id: user.id, status: user.status });
+            await user.update({ status: 'suspended', suspend_reason: required.reason });
+
+            const { message } = await helper.generate_email_content("account_suspended_email", "notification_email", {
+                reason: required.reason,
+            });
+            await helper.send_email({ email: user.email, subject: "Your account has been suspended", message });
+
+            return helper.success(res, "User suspended", { id: user.id, status: user.status, suspend_reason: user.suspend_reason });
         } catch (error) {
             return helper.error(res, error);
         }
@@ -165,7 +174,13 @@ module.exports = function () {
             if (!user) {
                 return helper.error(res, "User not found");
             }
-            await user.update({ status: 'active' });
+            await user.update({ status: 'active', suspend_reason: null });
+
+            const { message } = await helper.generate_email_content("account_reactivated_email", "notification_email", {
+                cta_link: `${process.env.FRONTEND_URL}`,
+            });
+            await helper.send_email({ email: user.email, subject: "Your account has been reactivated", message });
+
             return helper.success(res, "User reactivated", { id: user.id, status: user.status });
         } catch (error) {
             return helper.error(res, error);

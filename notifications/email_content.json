@@ -16,5 +16,47 @@
     "complete": "We received a request to reset your password. Use the following One-Time Password (OTP) to continue:",
     "otp_code": "[otp_code]",
     "security": "If you did not request a password reset, please ignore this email and your password will remain unchanged"
+  },
+  "new_ticket_email": {
+    "heading": "New Support Ticket",
+    "line1": "[user_name] ([user_email]) submitted a new support ticket.",
+    "line2": "Subject: [ticket_subject]",
+    "cta_text": "View Ticket",
+    "cta_link": "[cta_link]"
+  },
+  "ticket_reply_to_user_email": {
+    "heading": "New Reply on Your Ticket",
+    "line1": "Our support team replied to your ticket \"[ticket_subject]\".",
+    "line2": "Log in to view the conversation and reply.",
+    "cta_text": "View Ticket",
+    "cta_link": "[cta_link]"
+  },
+  "ticket_status_updated_email": {
+    "heading": "Support Ticket Status Updated",
+    "line1": "The status of your ticket \"[ticket_subject]\" has been updated to [status].",
+    "line2": "Log in to view the full ticket.",
+    "cta_text": "View Ticket",
+    "cta_link": "[cta_link]"
+  },
+  "ticket_reply_to_admin_email": {
+    "heading": "New Reply from User",
+    "line1": "[user_name] ([user_email]) replied to ticket \"[ticket_subject]\".",
+    "line2": "Log in to the admin panel to view and respond.",
+    "cta_text": "View Ticket",
+    "cta_link": "[cta_link]"
+  },
+  "account_suspended_email": {
+    "heading": "Account Suspended",
+    "line1": "Your account has been suspended by an administrator.",
+    "line2": "Reason: [reason]",
+    "cta_text": "",
+    "cta_link": ""
+  },
+  "account_reactivated_email": {
+    "heading": "Account Reactivated",
+    "line1": "Good news — your account has been reactivated and you can log in again.",
+    "line2": "",
+    "cta_text": "Log In",
+    "cta_link": "[cta_link]"
   }
 }
