@@ -2,7 +2,7 @@ const helper = require('../../../helper/helper');
 const db = require("../../../models");
 const Users = db.users;
 const { getClient } = require('../../../helper/stripe');
-const { getUsageForUser } = require('../../../helper/plan');
+const { getUsageForUser, isValidPlanTier, getPriceIdForTier, PLAN_TIERS } = require('../../../helper/plan');
 
 module.exports = function () {
     let module = {};
@@ -16,6 +16,7 @@ module.exports = function () {
 
             return helper.success(res, "Billing status", {
                 plan: effectivePlan,
+                plan_tier: effectivePlan === 'paid' ? req.user.plan_tier : null,
                 subscription_status: req.user.subscription_status,
                 current_period_end: effectivePlan === 'paid' ? req.user.current_period_end : null,
                 usage: {
@@ -29,13 +30,20 @@ module.exports = function () {
     };
 
     /**
-     * Creates a Stripe Checkout Session for the $9.99/month Pro plan and
-     * returns the URL to redirect the user to.
+     * Creates a Stripe Checkout Session for one of the paid duration tiers
+     * (1 Month / 6 Months / 1 Year - see PLAN_TIERS in helper/plan.js) and
+     * returns the URL to redirect the user to. Body: { plan: 'monthly' | '6month' | '1year' }
      */
     module.CreateCheckoutSession = async (req, res) => {
         try {
-            if (!process.env.STRIPE_PRICE_ID) {
-                return helper.error(res, "Billing is not configured yet. Please try again later.");
+            const tier = req.body.plan;
+            if (!isValidPlanTier(tier)) {
+                return helper.error(res, `plan must be one of: ${Object.keys(PLAN_TIERS).join(', ')}`);
+            }
+
+            const priceId = getPriceIdForTier(tier);
+            if (!priceId) {
+                return helper.error(res, "This plan isn't configured yet. Please try again later.");
             }
 
             const stripe = getClient();
@@ -52,14 +60,16 @@ module.exports = function () {
                 await user.update({ stripe_customer_id: customerId });
             }
 
+            await user.update({ plan_tier: tier });
+
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
             const session = await stripe.checkout.sessions.create({
                 mode: 'subscription',
                 customer: customerId,
-                line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+                line_items: [{ price: priceId, quantity: 1 }],
                 success_url: `${frontendUrl}/billing?checkout=success`,
                 cancel_url: `${frontendUrl}/billing?checkout=cancel`,
-                metadata: { user_id: String(user.id) },
+                metadata: { user_id: String(user.id), plan_tier: tier },
             });
 
             return helper.success(res, "Checkout session created", { url: session.url });

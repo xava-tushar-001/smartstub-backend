@@ -2,10 +2,42 @@ const db = require('../models');
 const { Op } = require('sequelize');
 const SalarySlip = db.salary_slip;
 
-// Free: 3 uploads. Paid: 3 base + 10 additional per subscription period = 13 total.
+// Free: 3 uploads. Paid: 20 uploads per subscription period, regardless of
+// which duration tier (1 Month / 6 Months / 1 Year) the subscription is for.
 const FREE_LIMIT = 3;
-const PAID_ADDITIONAL = 10;
-const PLAN_LIMITS = { free: FREE_LIMIT, paid: FREE_LIMIT + PAID_ADDITIONAL };
+const PAID_LIMIT = 20;
+const PLAN_LIMITS = { free: FREE_LIMIT, paid: PAID_LIMIT };
+
+// Paid subscription duration tiers. Each maps to a Stripe Price ID via an
+// env var - all tiers share the same upload limit (PAID_LIMIT above), they
+// only differ in price/billing interval.
+const PLAN_TIERS = {
+    monthly: { envVar: 'STRIPE_PRICE_ID_1MONTH', label: '1 Month' },
+    '6month': { envVar: 'STRIPE_PRICE_ID_6MONTH', label: '6 Months' },
+    '1year': { envVar: 'STRIPE_PRICE_ID_1YEAR', label: '1 Year' },
+};
+
+function isValidPlanTier(tier) {
+    return Object.prototype.hasOwnProperty.call(PLAN_TIERS, tier);
+}
+
+function getPriceIdForTier(tier) {
+    const def = PLAN_TIERS[tier];
+    return def ? (process.env[def.envVar] || null) : null;
+}
+
+// Reverse lookup used by the Stripe webhook: given the Price ID a
+// subscription is actually billed against, figure out which of our tiers it
+// corresponds to.
+function getTierForPriceId(priceId) {
+    if (!priceId) return null;
+    for (const [tier, def] of Object.entries(PLAN_TIERS)) {
+        if (process.env[def.envVar] && process.env[def.envVar] === priceId) {
+            return tier;
+        }
+    }
+    return null;
+}
 
 function startOfMonth() {
     const now = new Date();
@@ -34,8 +66,8 @@ function getEffectivePlan(user) {
 /**
  * Uploads used in the window that the given plan's quota resets on:
  * - paid: since the current subscription period started (a renewal moves
- *   this forward, so it always grants a fresh 10 - never cumulative with a
- *   prior period's usage).
+ *   this forward, so it always grants a fresh PAID_LIMIT - never cumulative
+ *   with a prior period's usage).
  * - free (or a paid user with no known period start, e.g. an admin-granted
  *   plan override with no real Stripe subscription): calendar month, same
  *   as before.
@@ -56,4 +88,16 @@ async function getUsageForUser(user) {
     return { count, limit: getPlanLimit(effectivePlan), effectivePlan, windowStart };
 }
 
-module.exports = { PLAN_LIMITS, FREE_LIMIT, PAID_ADDITIONAL, getPlanLimit, getEffectivePlan, getUsageForUser, startOfMonth };
+module.exports = {
+    PLAN_LIMITS,
+    FREE_LIMIT,
+    PAID_LIMIT,
+    PLAN_TIERS,
+    isValidPlanTier,
+    getPriceIdForTier,
+    getTierForPriceId,
+    getPlanLimit,
+    getEffectivePlan,
+    getUsageForUser,
+    startOfMonth,
+};

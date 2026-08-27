@@ -2,6 +2,7 @@ const db = require('../../models');
 const Users = db.users;
 const Payment = db.payment;
 const { getClient } = require('../../helper/stripe');
+const { getTierForPriceId } = require('../../helper/plan');
 
 const ACTIVE_STATUSES = ['active', 'trialing'];
 
@@ -13,9 +14,15 @@ async function applySubscriptionToUser(user, subscription) {
     const isActive = ACTIVE_STATUSES.includes(subscription.status);
     const periodStartSeconds = subscription.current_period_start;
     const periodEndSeconds = subscription.current_period_end;
+    const priceId = subscription.items?.data?.[0]?.price?.id;
+    const tier = getTierForPriceId(priceId);
 
     await user.update({
         plan: isActive ? 'paid' : 'free',
+        // Fall back to whatever tier the user last selected (e.g. /select-plan
+        // intent) if the price id doesn't match a known tier - keeps the UI
+        // from silently blanking the tier out on an unrelated webhook retry.
+        plan_tier: isActive ? (tier || user.plan_tier) : null,
         stripe_subscription_id: subscription.id,
         subscription_status: subscription.status,
         current_period_start: isActive && periodStartSeconds ? new Date(periodStartSeconds * 1000) : null,
@@ -97,6 +104,7 @@ module.exports = async function stripeWebhook(req, res) {
                 if (user) {
                     await user.update({
                         plan: 'free',
+                        plan_tier: null,
                         subscription_status: 'canceled',
                         current_period_start: null,
                         current_period_end: null,

@@ -16,6 +16,7 @@ router.post('/login', AdminAuth.LoginAdmin);
 
 // Dashboard analytics (admin only)
 router.get('/dashboard-stats', verify_admin, Analytics.GetDashboardStats);
+router.get('/earnings-graph', verify_admin, Analytics.GetEarningsGraph);
 
 // Subscriber (admin only)
 router.get('/subscriber-list', verify_admin, Subscriber.GetSubscriber);

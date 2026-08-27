@@ -79,6 +79,13 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       defaultValue: 'free'
     },
+    // Which paid duration tier the user picked/subscribed to: monthly | 6month | 1year.
+    // Null when plan is 'free'. Set on /select-plan (intent) and confirmed/corrected
+    // by the Stripe webhook once the subscription's actual price is known.
+    plan_tier: {
+      type: DataTypes.STRING(10),
+      allowNull: true
+    },
     stripe_customer_id: {
       type: DataTypes.STRING(60),
       allowNull: true
